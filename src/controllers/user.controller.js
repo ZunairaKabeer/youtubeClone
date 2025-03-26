@@ -7,18 +7,30 @@ import jwt from "jsonwebtoken";
 
 const generateAccessAndRefreshToken = async (userId) => {
   try {
+    console.log("Generating tokens for user:", userId); // Debugging
+
     const user = await User.findById(userId);
+    if (!user) {
+      throw new ApiError(404, "User not found during token generation");
+    }
+
+    console.log("User found:", user); // Debugging
+
     const accessToken = user.generateAccessToken();
     const refreshToken = user.generateRefreshToken();
+
+    console.log("Tokens generated:", { accessToken, refreshToken }); // Debugging
 
     user.refreshToken = refreshToken;
     await user.save({ validateBeforeSave: false });
 
     return { accessToken, refreshToken };
   } catch (error) {
+    console.error("Token Generation Error:", error.message); // Debugging
     throw new ApiError(500, "Error generating tokens");
   }
 };
+
 
 const registerUser = asyncHandler(async (req, res) => {
   const { fullName, email, username, password } = req.body;
@@ -126,7 +138,8 @@ const loginUser = asyncHandler(async (req, res) => {
 });
 
 const logoutUser = asyncHandler(async (req, res) => {
-  await User.findByIdAndUpdate();
+  await User.findByIdAndUpdate(req.user.id, { refreshToken: null });
+
   const options = {
     httpOnly: true,
     secure: true,
